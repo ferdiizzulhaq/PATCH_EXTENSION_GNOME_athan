@@ -50,6 +50,16 @@ Spinned VMs to test for both GNOME versions. [GNOME Boxes](https://apps.gnome.or
 - Ensured accessible colors for the design
 - Fixed the positioning issue
 
+### New Advanced Features:
+
+- **Live Countdown Timer:** Top panel now shows real-time HH:MM:SS countdown to the next prayer
+- **Specific Audio Playback:** Automatically plays Fajr Adzan for dawn/suhoor, distinct system tones for Sunnah times (Isyraq/Dhuha/Qiyam), and standard Adzan for Fardh prayers
+- **Muadzin Selection:** New dropdown in preferences to dynamically select from `.ogg` files in `adhan.notifications` folder
+- **Visual Cues:** Panel text turns orange at 15 minutes and blinking red 1 minute before Adzan; highlights upcoming prayer in the dropdown
+- **Geolocation UI:** Uses Nominatim API to display the localized City/Regency name at the bottom of the plugin menu
+- **Ramadan Day Indicator:** Dynamically detects the Hijri month and shows "Ramadan day #X" below the calendar date
+- **Quick Mute Toggle:** A simple switch in the dropdown menu to instantly silence all Adzan audio without opening preferences
+
 ### Todos
 
 - // TODO Refactor the overhaul
