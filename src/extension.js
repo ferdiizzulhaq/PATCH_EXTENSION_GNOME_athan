@@ -125,7 +125,7 @@ const Azan = GObject.registerClass(
 
             this._prayItems = {};
 
-            this._dateMenuItem = new PopupMenu.PopupMenuItem(_('...'), {
+            this._dateMenuItem = new PopupMenu.PopupImageMenuItem(_('...'), 'x-office-calendar-symbolic', {
                 style_class: 'athan-panel',
                 reactive: false,
                 hover: false,
@@ -139,7 +139,18 @@ const Azan = GObject.registerClass(
             for (let prayerId in this._timeNames) {
                 let prayerName = this._timeNames[prayerId];
 
-                let prayMenuItem = new PopupMenu.PopupMenuItem(_(prayerName), {
+                let iconName = {
+                    suhoor: 'weather-clear-night-symbolic',
+                    fajr: 'weather-few-clouds-night-symbolic',
+                    sunrise: 'weather-few-clouds-symbolic',
+                    dhuhr: 'weather-clear-symbolic',
+                    asr: 'weather-few-clouds-symbolic',
+                    maghrib: 'weather-clear-night-symbolic',
+                    isha: 'weather-clear-night-symbolic',
+                    midnight: 'weather-clear-night-symbolic',
+                }[prayerId] || 'preferences-system-time-symbolic';
+
+                let prayMenuItem = new PopupMenu.PopupImageMenuItem(_(prayerName), iconName, {
                     reactive: false,
                     hover: false,
                     activate: false,
@@ -202,7 +213,7 @@ const Azan = GObject.registerClass(
                     if (error) {
                         this.logger.log(
                             'Failed to connect to permissionStore: ' +
-                                error.message
+                            error.message
                         );
                         return;
                     }
@@ -214,7 +225,7 @@ const Azan = GObject.registerClass(
                             if (error)
                                 this.logger.log(
                                     'Error looking up permission: ' +
-                                        error.message
+                                    error.message
                                 );
 
                             let [perms, data] = error ? [{}, null] : res;
@@ -367,7 +378,7 @@ const Azan = GObject.registerClass(
                     } catch (e) {
                         this.logger.log(
                             'Failed to connect to Geoclue2 service: ' +
-                                e.message
+                            e.message
                         );
                         return;
                     }
@@ -510,26 +521,43 @@ const Azan = GObject.registerClass(
             const myLocation = [this._opt_latitude, this._opt_longitude];
             const myTimezone = this._timezoneArr[this._opt_timezone];
 
-            this._prayTimes.setMethod(
-                this._calcMethodsArr[this._opt_calculation_method]
-            );
+            const calcMethod = this._calcMethodsArr[this._opt_calculation_method];
+            this._prayTimes.setMethod(calcMethod);
             this._prayTimes.adjust({ asr: 'Standard' });
+
+            if (calcMethod === 'MUI') {
+                this._prayTimes.tune({
+                    fajr: 2,
+                    dhuhr: 2,
+                    asr: 2,
+                    maghrib: 2,
+                    isha: 2
+                });
+            } else {
+                this._prayTimes.tune({
+                    fajr: 0,
+                    dhuhr: 0,
+                    asr: 0,
+                    maghrib: 0,
+                    isha: 0
+                });
+            }
 
             return this._opt_time_format_12
                 ? this._prayTimes.getTimes(
-                      currentDate,
-                      myLocation,
-                      myTimezone,
-                      'auto',
-                      format === 'String' ? '12h' : 'Float'
-                  )
+                    currentDate,
+                    myLocation,
+                    myTimezone,
+                    'auto',
+                    format === 'String' ? '12h' : 'Float'
+                )
                 : this._prayTimes.getTimes(
-                      currentDate,
-                      myLocation,
-                      myTimezone,
-                      'auto',
-                      format === 'String' ? '24h' : 'Float'
-                  );
+                    currentDate,
+                    myLocation,
+                    myTimezone,
+                    'auto',
+                    format === 'String' ? '24h' : 'Float'
+                );
         }
 
         _findNearestPrayer(timesFloat, currentSeconds) {

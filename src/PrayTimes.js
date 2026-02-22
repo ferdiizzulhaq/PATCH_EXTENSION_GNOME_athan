@@ -8,17 +8,17 @@ Developer: Hamid Zarrabi-Zadeh
 License: GNU LGPL v3.0
 
 TERMS OF USE:
-	Permission is granted to use this code, with or 
-	without modification, in any website or application 
-	provided that credit is given to the original work 
-	with a link back to PrayTimes.org.
+    Permission is granted to use this code, with or 
+    without modification, in any website or application 
+    provided that credit is given to the original work 
+    with a link back to PrayTimes.org.
 
 This program is distributed in the hope that it will 
 be useful, but WITHOUT ANY WARRANTY. 
 
 PLEASE DO NOT REMOVE THIS COPYRIGHT BLOCK.
  
-*/ 
+*/
 //--------------------- Help and Manual ----------------------
 /*
 
@@ -30,21 +30,21 @@ http://praytimes.org/calculation
 
 //------------------------ User Interface -------------------------
 
-	getTimes (date, coordinates [, timeZone [, dst [, timeFormat]]]) 
+    getTimes (date, coordinates [, timeZone [, dst [, timeFormat]]]) 
 	
-	setMethod (method)       // set calculation method 
-	adjust (parameters)      // adjust calculation parameters	
-	tune (offsets)           // tune times by given offsets 
+    setMethod (method)       // set calculation method 
+    adjust (parameters)      // adjust calculation parameters	
+    tune (offsets)           // tune times by given offsets 
 
-	getMethod ()             // get calculation method 
-	getSetting ()            // get current calculation parameters
-	getOffsets ()            // get current time offsets
+    getMethod ()             // get calculation method 
+    getSetting ()            // get current calculation parameters
+    getOffsets ()            // get current time offsets
 
 //------------------------- Sample Usage --------------------------
 
-	var PT = new PrayTimes('ISNA');
-	var times = PT.getTimes(new Date(), [43, -80], -5);
-	document.write('Sunrise = '+ times.sunrise)
+    var PT = new PrayTimes('ISNA');
+    var times = PT.getTimes(new Date(), [43, -80], -5);
+    document.write('Sunrise = '+ times.sunrise)
 
 */
 
@@ -71,25 +71,25 @@ export function getMethods() {
             name: _('University of Islamic Sciences, Karachi'),
             params: { fajr: 18, isha: 18 },
         },
-        MUI : {
+        MUI: {
             name: _('Indonesian Ulema Council'),
-            params: { fajr: 20, isha: 18 },
+            params: { fajr: 20, isha: 18, suhoor: '10 min' },
         },
     };
 }
 
 export function PrayTimes(method) {
     var timeNames = {
-            suhoor: _('Suhoor'),
-            fajr: _('Fajr'),
-            sunrise: _('Sunrise'),
-            dhuhr: _('Dhuhr'),
-            asr: _('Asr'),
-            sunset: _('Sunset'),
-            maghrib: _('Maghrib'),
-            isha: _('Isha'),
-            midnight: _('Midnight'),
-        },
+        suhoor: _('Suhoor'),
+        fajr: _('Fajr'),
+        sunrise: _('Sunrise'),
+        dhuhr: _('Dhuhr'),
+        asr: _('Asr'),
+        sunset: _('Sunset'),
+        maghrib: _('Maghrib'),
+        isha: _('Isha'),
+        midnight: _('Midnight'),
+    },
         methods = getMethods(),
         defaultParams = {
             maghrib: '0 min',
@@ -216,7 +216,7 @@ export function PrayTimes(method) {
                 (1 / 15) *
                 DMath.arccos(
                     (-DMath.sin(angle) - DMath.sin(decl) * DMath.sin(lat)) /
-                        (DMath.cos(decl) * DMath.cos(lat))
+                    (DMath.cos(decl) * DMath.cos(lat))
                 );
             return noon + (direction == 'ccw' ? -t : t);
         },
@@ -324,7 +324,7 @@ export function PrayTimes(method) {
                 setting.midnight == 'Jafari'
                     ? times.sunset + this.timeDiff(times.sunset, times.fajr) / 2
                     : times.sunset +
-                      this.timeDiff(times.sunset, times.sunrise) / 2;
+                    this.timeDiff(times.sunset, times.sunrise) / 2;
 
             times = this.tuneTimes(times);
             return this.modifyFormats(times);
