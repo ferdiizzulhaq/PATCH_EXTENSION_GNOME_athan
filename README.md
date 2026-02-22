@@ -59,6 +59,7 @@ Spinned VMs to test for both GNOME versions. [GNOME Boxes](https://apps.gnome.or
 - **Geolocation UI:** Uses Nominatim API to display the localized City/Regency name at the bottom of the plugin menu
 - **Ramadan Day Indicator:** Dynamically detects the Hijri month and shows "Ramadan day #X" below the calendar date
 - **Quick Mute Toggle:** A simple switch in the dropdown menu to instantly silence all Adzan audio without opening preferences
+- **Extended Calculation Methods:** Added 13 new prayer time calculation methods (including Kemenag RI, JAKIM, Diyanet, etc.) alongside the existing options, selectable from preferences
 
 ### Todos
 
