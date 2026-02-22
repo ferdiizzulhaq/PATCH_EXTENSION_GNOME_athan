@@ -56,11 +56,11 @@ function _(str) {
 export function getMethods() {
     return {
         Makkah: {
-            name: _('Umm Al-Qura University, Makkah'),
+            name: _('Umm Al Qura, Makkah'),
             params: { fajr: 18.5, isha: '90 min' },
         },
         Egypt: {
-            name: _('Egyptian General Authority of Survey'),
+            name: _('Egyptian General Authority Of Survey'),
             params: { fajr: 19.5, isha: 17.5 },
         },
         MWL: {
@@ -68,12 +68,64 @@ export function getMethods() {
             params: { fajr: 18, isha: 17 },
         },
         Karachi: {
-            name: _('University of Islamic Sciences, Karachi'),
+            name: _('University of Islamic Science Karachi'),
             params: { fajr: 18, isha: 18 },
         },
         MUI: {
-            name: _('Indonesian Ulema Council'),
+            name: _('Indonesian Ulema Council (MUI)'),
             params: { fajr: 20, isha: 18, suhoor: '10 min' },
+        },
+        Qatar: {
+            name: _('Qatar Calculation'),
+            params: { fajr: 18, isha: '90 min' },
+        },
+        Tehran: {
+            name: _('Institute of Geophysics, University of Tehran'),
+            params: { fajr: 17.7, isha: 14, maghrib: 4.5, midnight: 'Jafari' },
+        },
+        Diyanet: {
+            name: _('Diyanet Calculation'),
+            params: { fajr: 18, isha: 17 },
+        },
+        Custom: {
+            name: _('User Defined Method'),
+            params: { fajr: 18, isha: 17 },
+        },
+        JAKIM: {
+            name: _('JAKIM, Malaysia'),
+            params: { fajr: 20, isha: 18 },
+        },
+        KHEU: {
+            name: _('KHEU, Brunei'),
+            params: { fajr: 20, isha: 18 },
+        },
+        Kemenag: {
+            name: _('Kemenag, Republik Indonesia'),
+            params: { fajr: 20, isha: 18 },
+        },
+        MUIS: {
+            name: _('MUIS, Singapore'),
+            params: { fajr: 20, isha: 18 },
+        },
+        FIANZ: {
+            name: _('FIANZ, New Zealand'),
+            params: { fajr: 17, isha: 17 },
+        },
+        Dubai: {
+            name: _('Dubai Calculation'),
+            params: { fajr: 18.2, isha: 18.2 },
+        },
+        Moonsighting: {
+            name: _('Moonsighting Committee Worldwide'),
+            params: { fajr: 18, isha: 18 },
+        },
+        ISNA: {
+            name: _('Islamic Society of North America'),
+            params: { fajr: 15, isha: 15 },
+        },
+        Kuwait: {
+            name: _('Kuwait Calculation'),
+            params: { fajr: 18, isha: 17.5 },
         },
     };
 }
