@@ -80,15 +80,19 @@ export function getMethods() {
 
 export function PrayTimes(method) {
     var timeNames = {
+        sahur: _('Sahur'),
         suhoor: _('Suhoor'),
         fajr: _('Fajr'),
         sunrise: _('Sunrise'),
+        isyraq: _('Isyraq'),
+        dhuha: _('Dhuha'),
         dhuhr: _('Dhuhr'),
         asr: _('Asr'),
         sunset: _('Sunset'),
         maghrib: _('Maghrib'),
         isha: _('Isha'),
         midnight: _('Midnight'),
+        qiyam: _('Qiyam'),
     },
         methods = getMethods(),
         defaultParams = {
@@ -325,6 +329,11 @@ export function PrayTimes(method) {
                     ? times.sunset + this.timeDiff(times.sunset, times.fajr) / 2
                     : times.sunset +
                     this.timeDiff(times.sunset, times.sunrise) / 2;
+
+            times.qiyam = times.midnight;
+            times.sahur = times.sunset + (2 / 3) * this.timeDiff(times.sunset, times.fajr);
+            times.isyraq = times.sunrise + 15 / 60;
+            times.dhuha = times.sunrise + 30 / 60;
 
             times = this.tuneTimes(times);
             return this.modifyFormats(times);

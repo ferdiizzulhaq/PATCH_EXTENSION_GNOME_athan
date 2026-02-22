@@ -10,7 +10,7 @@ import * as PrayTimes from './PrayTimes.js';
 export default class ClipboardIndicatorPreferences extends ExtensionPreferences {
     async fillPreferencesWindow(window) {
         window._settings = this.getSettings(); // * The schema object
-        const settingsUI = new Settings(window._settings);
+        const settingsUI = new Settings(window._settings, this.path);
         const page = new Adw.PreferencesPage();
         page.add(settingsUI.locationGroup);
         page.add(settingsUI.calculationGroup);
@@ -21,8 +21,9 @@ export default class ClipboardIndicatorPreferences extends ExtensionPreferences 
 }
 
 class Settings {
-    constructor(schema) {
+    constructor(schema, extensionPath) {
         this.schema = schema;
+        this.extensionPath = extensionPath;
 
         this.#initFields();
         this.#createView();
@@ -89,6 +90,10 @@ class Settings {
             title: _('Notify me before athan'),
             model: this.#notificationOptions(),
         });
+        this.field_muadzin_mode = new Adw.ComboRow({
+            title: _('Muadzin'),
+            model: this.#muadzinOptions(),
+        });
     }
 
     #createView() {
@@ -114,6 +119,7 @@ class Settings {
         });
         this.notificationsGroup.add(this.field_azan_notification_toggle);
         this.notificationsGroup.add(this.field_azan_notification_mode);
+        this.notificationsGroup.add(this.field_muadzin_mode);
     }
 
     #bindSettings() {
@@ -183,6 +189,21 @@ class Settings {
             'selected',
             Gio.SettingsBindFlags.DEFAULT
         );
+        this.field_muadzin_mode.connect('notify::selected-item', () => {
+            let item = this.field_muadzin_mode.selected_item;
+            if (item) {
+                this.schema.set_string('muadzin', item.get_string());
+            }
+        });
+        const currentMuadzin = this.schema.get_string('muadzin');
+        let options = this.field_muadzin_mode.model;
+        for (let i = 0; i < options.get_n_items(); i++) {
+            if (options.get_item(i).get_string() === currentMuadzin) {
+                this.field_muadzin_mode.selected = i;
+                break;
+            }
+        }
+
         this.field_auto_location_toggle.connect('notify::active', () => {
             this.#updateLocationFields();
         });
@@ -263,6 +284,34 @@ class Settings {
         for (let option of options) {
             list.append(option);
         }
+        return list;
+    }
+
+    #muadzinOptions() {
+        let list = new Gtk.StringList();
+        let targetDir = Gio.File.new_for_path(this.extensionPath + '/adhan.notifications');
+
+        try {
+            let iter = targetDir.enumerate_children(
+                'standard::name,standard::type',
+                Gio.FileQueryInfoFlags.NONE,
+                null
+            );
+
+            let fileInfo;
+            while ((fileInfo = iter.next_file(null)) !== null) {
+                if (fileInfo.get_file_type() === Gio.FileType.REGULAR) {
+                    let name = fileInfo.get_name();
+                    if (name.endsWith('.ogg')) {
+                        list.append(name);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Failed to read adhan.notifications folder: ' + e);
+            list.append('Ahmed_al_Imadi_Adhan.ogg'); // fallback
+        }
+
         return list;
     }
 

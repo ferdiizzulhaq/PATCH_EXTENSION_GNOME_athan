@@ -3,6 +3,8 @@ import GObject from 'gi://GObject';
 import St from 'gi://St';
 import GLib from 'gi://GLib';
 import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
+import Soup from 'gi://Soup?version=3.0';
 
 import {
     Extension,
@@ -87,27 +89,33 @@ const Azan = GObject.registerClass(
             let today = new Date();
             let dayOfWeek = today.getDay();
             this._timeNames = {
-                suhoor: _('Suhoor'),
-                fajr: _('Al-Fajr'),
-                sunrise: _('Al-Shurooq'),
-                dhuhr: dayOfWeek === 5 ? _('Jummah') : _('Al-Thuhr'),
-                asr: _('Al-Asr'),
-                maghrib: _('Al-Maghrib'),
-                isha: _("Al-Isha'"),
-                midnight: _('Muntasaf Al-Layl'),
+                sahur: _('Sahur'),
+                suhoor: _('Imsak'),
+                fajr: _('Subuh'),
+                sunrise: _('Syuruq'),
+                isyraq: _('Isyraq'),
+                dhuha: _('Dhuha'),
+                dhuhr: dayOfWeek === 5 ? _("Jum'at") : _('Dhuhur'),
+                asr: _("'Asar"),
+                maghrib: _('Maghrib'),
+                isha: _("Isya'"),
+                qiyam: _('Qiyam'),
             };
 
             this._primaryPrayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
 
             this._timeConciseLevels = {
+                sahur: 1,
                 suhoor: 1,
                 fajr: 0,
                 sunrise: 1,
+                isyraq: 1,
+                dhuha: 1,
                 dhuhr: 0,
                 asr: 0,
                 maghrib: 0,
                 isha: 0,
-                midnight: 1,
+                qiyam: 1,
             };
 
             this._calcMethodsArr = ['Makkah', 'Egypt', 'MWL', 'Karachi', 'MUI'];
@@ -134,20 +142,32 @@ const Azan = GObject.registerClass(
 
             this.menu.addMenuItem(this._dateMenuItem);
 
+            this._ramadanDayMenuItem = new PopupMenu.PopupMenuItem(_('...'), {
+                style_class: 'athan-panel',
+                reactive: false,
+                hover: false,
+                activate: false,
+            });
+
+            this.menu.addMenuItem(this._ramadanDayMenuItem);
+
             this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
             for (let prayerId in this._timeNames) {
                 let prayerName = this._timeNames[prayerId];
 
                 let iconName = {
-                    suhoor: 'weather-clear-night-symbolic',
-                    fajr: 'weather-few-clouds-night-symbolic',
-                    sunrise: 'weather-few-clouds-symbolic',
+                    sahur: 'weather-clear-night-symbolic',
+                    suhoor: 'preferences-system-time-symbolic',
+                    fajr: 'weather-fog-symbolic',
+                    sunrise: 'weather-clear-symbolic',
+                    isyraq: 'weather-clear-symbolic',
+                    dhuha: 'weather-clear-symbolic',
                     dhuhr: 'weather-clear-symbolic',
                     asr: 'weather-few-clouds-symbolic',
                     maghrib: 'weather-clear-night-symbolic',
                     isha: 'weather-clear-night-symbolic',
-                    midnight: 'weather-clear-night-symbolic',
+                    qiyam: 'weather-clear-night-symbolic',
                 }[prayerId] || 'preferences-system-time-symbolic';
 
                 let prayMenuItem = new PopupMenu.PopupImageMenuItem(_(prayerName), iconName, {
@@ -177,6 +197,28 @@ const Azan = GObject.registerClass(
                 };
             }
 
+            this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+            this._muteToggleItem = new PopupMenu.PopupSwitchMenuItem(
+                _("Mute Azan Audio"),
+                !this._opt_notify_for_azan
+            );
+
+            this._muteToggleItem.connect('toggled', (item, state) => {
+                this._settings.set_boolean('notify-for-azan', !state);
+            });
+
+            this.menu.addMenuItem(this._muteToggleItem);
+            this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+            // ? City Name Geolocation Menu Item
+            this._cityMenuItem = new PopupMenu.PopupMenuItem(_('📍 Locating...'), {
+                style_class: 'athan-panel',
+                reactive: false,
+                hover: false,
+                activate: false,
+            });
+            this.menu.addMenuItem(this._cityMenuItem);
             this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
             this.prefs_s = new PopupMenu.PopupBaseMenuItem({
@@ -304,8 +346,17 @@ const Azan = GObject.registerClass(
             connectSetting(
                 'notify-for-azan',
                 'boolean',
-                this._updateLabel.bind(this)
+                () => {
+                    if (this._muteToggleItem) {
+                        this._muteToggleItem.setToggleState(!this._opt_notify_for_azan);
+                    }
+                    this._updateLabel();
+                }
             );
+
+            connectSetting('muadzin', 'string', () => {
+                this._updateLabel();
+            });
 
             connectSetting('notify-before-azan', 'int', () => {
                 this._opt_notify_before_azan =
@@ -331,6 +382,8 @@ const Azan = GObject.registerClass(
                 { key: 'concise-list', type: 'int' },
                 { key: 'hijri-date-adjustment', type: 'int' },
                 { key: 'notify-for-azan', type: 'boolean' },
+                { key: 'muadzin', type: 'string' },
+                { key: 'city-name', type: 'string' },
                 { key: 'notify-before-azan', type: 'int' },
                 { key: 'panel-position', type: 'int' },
             ];
@@ -349,6 +402,10 @@ const Azan = GObject.registerClass(
 
             this._panelPosition =
                 this._panelPositionArr[this._opt_panel_position];
+
+            if (this._opt_city_name && this._cityMenuItem) {
+                this._cityMenuItem.label.text = `📍 ${this._opt_city_name}`;
+            }
 
             this._updateAutoLocation();
         }
@@ -409,10 +466,49 @@ const Azan = GObject.registerClass(
 
         _onGClueLocationChanged() {
             let geoLocation = this._gclueService.location;
+
+            // Only update if location actually changed significantly
+            let oldLat = this._opt_latitude;
+            let oldLon = this._opt_longitude;
+
             this._opt_latitude = geoLocation.latitude;
             this._opt_longitude = geoLocation.longitude;
             this._settings.set_double('latitude', this._opt_latitude);
             this._settings.set_double('longitude', this._opt_longitude);
+
+            if (oldLat !== this._opt_latitude || oldLon !== this._opt_longitude || !this._opt_city_name) {
+                this._fetchCityName(this._opt_latitude, this._opt_longitude);
+            }
+        }
+
+        _fetchCityName(lat, lon) {
+            let session = new Soup.Session();
+            let url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
+            let message = Soup.Message.new('GET', url);
+            message.request_headers.append('User-Agent', 'GNOME Shell Athan Extension/1.0');
+
+            session.send_and_read_async(
+                message,
+                GLib.PRIORITY_DEFAULT,
+                null,
+                (session, res) => {
+                    try {
+                        let bytes = session.send_and_read_finish(res);
+                        let decoder = new TextDecoder();
+                        let text = decoder.decode(bytes.get_data());
+                        let data = JSON.parse(text);
+
+                        let cityName = data.address.city || data.address.town || data.address.county || data.address.state || 'Unknown Location';
+                        this._opt_city_name = cityName;
+                        this._settings.set_string('city-name', cityName);
+                        if (this._cityMenuItem) {
+                            this._cityMenuItem.label.text = `📍 ${cityName}`;
+                        }
+                    } catch (e) {
+                        this.logger.log('Failed to fetch city name: ' + e);
+                    }
+                }
+            );
         }
 
         _updateLocationMonitoring() {
@@ -478,15 +574,16 @@ const Azan = GObject.registerClass(
 
             for (const prayerId in this._timeNames) {
                 this._prayItems[prayerId].label.text = timesStr[prayerId];
+                this._prayItems[prayerId].label.remove_style_class_name('athan-next-prayer-highlight');
             }
 
             const {
                 nextPrayerId,
-                diffMinutes,
+                diffSeconds,
                 isTimeForPraying,
                 isAfterAzan,
                 lastPrayerId,
-                minutesSinceLastPrayer,
+                secondsSinceLastPrayer,
             } = this._findNearestPrayer(timesFloat, currentSeconds);
 
             if (nextPrayerId !== this._lastNotifiedPrayerId) {
@@ -498,7 +595,7 @@ const Azan = GObject.registerClass(
             this._updateIslamicDate();
             this._handlePrayerNotifications(
                 isAfterAzan,
-                diffMinutes,
+                diffSeconds,
                 nextPrayerId,
                 timesStr,
                 isTimeForPraying
@@ -508,12 +605,17 @@ const Azan = GObject.registerClass(
                 ? lastPrayerId ?? nextPrayerId
                 : nextPrayerId;
 
+            if (nextPrayerId) {
+                this._prayItems[nextPrayerId].label.add_style_class_name('athan-next-prayer-highlight');
+            }
+
             this._updateIndicatorText(
                 isTimeForPraying,
                 isAfterAzan,
-                diffMinutes,
+                diffSeconds,
                 indicatorPrayerId,
-                minutesSinceLastPrayer
+                secondsSinceLastPrayer,
+                timesStr
             );
         }
 
@@ -562,11 +664,11 @@ const Azan = GObject.registerClass(
 
         _findNearestPrayer(timesFloat, currentSeconds) {
             let nextPrayerId = null;
-            let minDiffMinutes = Number.MAX_VALUE;
+            let minDiffSeconds = Number.MAX_VALUE;
             let isTimeForPraying = false;
             let isAfterAzan = false;
             let lastPrayerId = null;
-            let minutesSinceLastPrayer = null;
+            let secondsSinceLastPrayer = null;
 
             for (const prayerId of this._primaryPrayers) {
                 const prayerSeconds = this._calculatePrayerSeconds(
@@ -583,31 +685,29 @@ const Azan = GObject.registerClass(
                     diffSeconds -= 24 * 3600;
                 }
 
-                const diffMinutes = Math.floor(diffSeconds / 60);
-
-                // ? If it’s prayer time
-                if (diffMinutes === 0) {
+                // ? If it’s prayer time (within 1 minute essentially) 
+                if (Math.abs(diffSeconds) < 60 && diffSeconds <= 0) {
                     isTimeForPraying = true;
                     nextPrayerId = prayerId;
-                    minDiffMinutes = 0;
+                    minDiffSeconds = diffSeconds;
                     break;
                 }
 
-                if (diffMinutes > 0 && diffMinutes < minDiffMinutes) {
-                    minDiffMinutes = diffMinutes;
+                if (diffSeconds > 0 && diffSeconds < minDiffSeconds) {
+                    minDiffSeconds = diffSeconds;
                     nextPrayerId = prayerId;
                 }
 
-                if (diffMinutes < 0) {
-                    const elapsedMinutes = Math.abs(diffMinutes);
+                if (diffSeconds < 0) {
+                    const elapsedSeconds = Math.abs(diffSeconds);
 
                     if (
-                        elapsedMinutes <= 15 &&
-                        (minutesSinceLastPrayer === null ||
-                            elapsedMinutes < minutesSinceLastPrayer)
+                        elapsedSeconds <= 15 * 60 &&
+                        (secondsSinceLastPrayer === null ||
+                            elapsedSeconds < secondsSinceLastPrayer)
                     ) {
                         isAfterAzan = true;
-                        minutesSinceLastPrayer = elapsedMinutes;
+                        secondsSinceLastPrayer = elapsedSeconds;
                         lastPrayerId = prayerId;
                     }
                 }
@@ -615,16 +715,16 @@ const Azan = GObject.registerClass(
 
             if (!nextPrayerId) {
                 nextPrayerId = this._primaryPrayers[0];
-                minDiffMinutes = 0;
+                minDiffSeconds = 0;
             }
 
             return {
                 nextPrayerId,
-                diffMinutes: minDiffMinutes,
+                diffSeconds: minDiffSeconds,
                 isTimeForPraying,
                 isAfterAzan,
                 lastPrayerId,
-                minutesSinceLastPrayer,
+                secondsSinceLastPrayer,
             };
         }
 
@@ -652,15 +752,24 @@ const Azan = GObject.registerClass(
             );
             const outputIslamicDate = this._formatHijriDate(hijriDate);
             this._dateMenuItem.label.text = outputIslamicDate;
+
+            // ? hijriDate[6] is the month index (0-11). Ramadan is index 8.
+            if (hijriDate[6] === 8) {
+                this._ramadanDayMenuItem.label.text = `Ramadan day #${hijriDate[5]}`;
+                this._ramadanDayMenuItem.actor.visible = true;
+            } else {
+                this._ramadanDayMenuItem.actor.visible = false;
+            }
         }
 
         _handlePrayerNotifications(
             isAfterAzan,
-            diffMinutes,
+            diffSeconds,
             nextPrayerId,
             timesStr,
             isTimeForPraying
         ) {
+            let diffMinutes = Math.floor(diffSeconds / 60);
             if (
                 this._opt_notify_before_azan > 0 &&
                 diffMinutes === this._opt_notify_before_azan &&
@@ -692,16 +801,46 @@ const Azan = GObject.registerClass(
                     ),
                     _('Prayer time: %s').format(timesStr[nextPrayerId])
                 );
+
+                this._playAzanAudio(nextPrayerId);
+
                 this._azanNotified = true;
+            }
+        }
+
+        _playAzanAudio(prayerId) {
+            let player = global.display.get_sound_player();
+
+            // ? Sunnah times - play a short system sound
+            if (['isyraq', 'dhuha', 'qiyam', 'sunrise'].includes(prayerId)) {
+                let audioFile = Gio.File.new_for_path('/usr/share/sounds/gnome/default/alerts/drip.ogg');
+                if (audioFile.query_exists(null)) {
+                    player.play_from_file(audioFile, 'Athan Extension', null);
+                }
+                return;
+            }
+
+            let audioFileName = this._opt_muadzin || 'Ahmed_al_Imadi_Adhan.ogg';
+            if (prayerId === 'fajr' || prayerId === 'suhoor') {
+                audioFileName = 'Mishary_Rashid_al_Afasy_Fajr_Adhan.ogg';
+            }
+
+            let audioFile = Gio.File.new_for_path(
+                this.extension.path + '/adhan.notifications/' + audioFileName
+            );
+
+            if (audioFile.query_exists(null)) {
+                player.play_from_file(audioFile, 'Athan Extension', null);
             }
         }
 
         _updateIndicatorText(
             isTimeForPraying,
             isAfterAzan,
-            diffMinutes,
+            diffSeconds,
             indicatorPrayerId,
-            minutesSinceLastPrayer
+            secondsSinceLastPrayer,
+            timesStr
         ) {
             if (!indicatorPrayerId) {
                 return;
@@ -715,27 +854,36 @@ const Azan = GObject.registerClass(
                 return;
             }
 
-            if (isAfterAzan && minutesSinceLastPrayer != null) {
+            if (isAfterAzan && secondsSinceLastPrayer != null) {
                 this.indicatorText.set_text(
                     pgettext(
                         'Extention indecator',
                         '%s • since %s ago'
                     ).format(
                         this._timeNames[indicatorPrayerId],
-                        this._formatRemainingTimeFromMinutes(
-                            minutesSinceLastPrayer
+                        this._formatRemainingTimeFromSeconds(
+                            secondsSinceLastPrayer
                         )
                     )
                 );
                 return;
             }
 
-            // ? Default: Show time until the next prayer
+            // ? Visual color indicator 
+            this.indicatorText.remove_style_class_name('athan-approaching');
+            this.indicatorText.remove_style_class_name('athan-imminent');
+
+            if (diffSeconds > 0) {
+                if (diffSeconds <= 60) {
+                    this.indicatorText.add_style_class_name('athan-imminent');
+                } else if (diffSeconds <= 15 * 60) {
+                    this.indicatorText.add_style_class_name('athan-approaching');
+                }
+            }
+
+            // ? HH:MM:SS Countdown 
             this.indicatorText.set_text(
-                pgettext('Extention indecator', '%s -%s').format(
-                    this._timeNames[indicatorPrayerId],
-                    this._formatRemainingTimeFromMinutes(diffMinutes)
-                )
+                `${this._formatRemainingTimeFromSeconds(diffSeconds)} \u23F3 ${this._timeNames[indicatorPrayerId]} ${timesStr[indicatorPrayerId]}`
             );
         }
 
@@ -751,13 +899,16 @@ const Azan = GObject.registerClass(
             return hour * 3600;
         }
 
-        _formatRemainingTimeFromMinutes(diffMinutes) {
-            let hours = Math.floor(Math.abs(diffMinutes) / 60);
-            let minutes = Math.abs(diffMinutes) % 60;
+        _formatRemainingTimeFromSeconds(diffSeconds) {
+            let totalSeconds = Math.abs(diffSeconds);
+            let hours = Math.floor(totalSeconds / 3600);
+            let minutes = Math.floor((totalSeconds % 3600) / 60);
+            let seconds = Math.floor(totalSeconds % 60);
 
-            return '%s:%s'.format(
+            return '%s:%s:%s'.format(
                 hours.toString().padStart(2, '0'),
-                minutes.toString().padStart(2, '0')
+                minutes.toString().padStart(2, '0'),
+                seconds.toString().padStart(2, '0')
             );
         }
 

@@ -65,5 +65,17 @@
         <description>Notify me before azan</description>
     </key>
 
+    <key type="s" name="muadzin">
+        <default>""</default>
+        <summary>Muadzin Selection</summary>
+        <description>Selected muadzin audio file for adzan</description>
+    </key>
+
+    <key type="s" name="city-name">
+        <default>""</default>
+        <summary>City Name</summary>
+        <description>Cached reverse geocoded city name</description>
+    </key>
+
   </schema>
 </schemalist>

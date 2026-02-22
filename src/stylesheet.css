@@ -15,3 +15,20 @@
     transition: color 500ms ease-in-out, background-color 500ms ease-in-out;
     border: none;
 }
+
+.athan-approaching {
+    color: #ffd242;
+    font-weight: bold;
+    text-shadow: 0px 0px 4px rgba(255, 210, 66, 0.4);
+}
+
+.athan-imminent {
+    color: #ff5252;
+    font-weight: bold;
+    text-shadow: 0px 0px 8px rgba(255, 82, 82, 0.6);
+}
+
+.athan-next-prayer-highlight {
+    font-weight: bold;
+    color: #55ff55;
+}
